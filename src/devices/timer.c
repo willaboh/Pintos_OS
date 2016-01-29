@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include "devices/pit.h"
 #include "threads/interrupt.h"
+#include "threads/synch.h"
 #include "threads/thread.h"
   
 /* See [8254] for hardware details of the 8254 timer chip. */
@@ -95,11 +96,27 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
-  int64_t start = timer_ticks ();
+  struct lock lk;
+  lock_init (&lk);
+  lock_acquire (&lk);
+
+  struct sleeping_thread current_thread;
+  current_thread.wake_time = timer_ticks () + ticks;
 
   ASSERT (intr_get_level () == INTR_ON);
+
+  sema_init(&current_thread.sema, 0);
+
+  list_insert_ordered (&sleeping_threads_list,
+                       &current_thread.elem,
+                       &compare_ticks,
+                       NULL);
+  sema_down(&current_thread.sema);
+
   while (timer_elapsed (start) < ticks) 
     thread_yield ();
+
+  lock_release(&lk);
 }
 
 /* Compare less function for sleeping threads to help order
