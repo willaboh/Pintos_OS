@@ -236,7 +236,7 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
-  wake_sleeping_threads ();
+  wake_up_sleeping_threads ();
   thread_tick ();
 }
 
