@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include "devices/pit.h"
 #include "threads/interrupt.h"
-#include "threads/synch.h"
 #include "threads/thread.h"
   
 /* See [8254] for hardware details of the 8254 timer chip. */
@@ -24,11 +23,18 @@ static int64_t ticks;
    Initialized by timer_calibrate(). */
 static unsigned loops_per_tick;
 
+/* List of sleeping threads */
+struct list sleeping_threads_list;
+
 static intr_handler_func timer_interrupt;
 static bool too_many_loops (unsigned loops);
 static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
+static bool compare_ticks (const struct list_elem *a,
+                              const struct list_elem *b,
+                              void *aux UNUSED);
+static void wake_up_sleeping_threads (void);
 
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
@@ -94,6 +100,21 @@ timer_sleep (int64_t ticks)
   ASSERT (intr_get_level () == INTR_ON);
   while (timer_elapsed (start) < ticks) 
     thread_yield ();
+}
+
+/* Compare less function for sleeping threads to help order
+ * according to wake up time */
+bool
+compare_ticks (const struct list_elem *a,
+               const struct list_elem *b,
+               void *aux UNUSED)
+{
+  struct sleeping_thread *a_sleeping;
+  struct sleeping_thread *b_sleeping;
+  a_sleeping = list_entry (a, struct sleeping_thread, elem);
+  b_sleeping = list_entry (b, struct sleeping_thread, elem);
+
+  return a_sleeping->wake_time < b_sleeping->wake_time;
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
