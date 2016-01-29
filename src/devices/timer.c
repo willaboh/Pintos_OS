@@ -113,9 +113,6 @@ timer_sleep (int64_t ticks)
                        NULL);
   sema_down(&current_thread.sema);
 
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
-
   lock_release(&lk);
 }
 
@@ -132,6 +129,36 @@ compare_ticks (const struct list_elem *a,
   b_sleeping = list_entry (b, struct sleeping_thread, elem);
 
   return a_sleeping->wake_time < b_sleeping->wake_time;
+}
+
+/* Iterates through list of sleeping threads and unblocks threads
+ * if OS ticks is greater than thread wake_time */
+void
+wake_up_sleeping_threads ()
+{
+  struct list_elem *current_elem;
+  struct sleeping_thread *current_thread;
+
+  enum intr_level old_level = intr_disable ();
+
+  //Iterate through the list to wake all threads which have finished sleeping
+  while(!list_empty(&sleeping_threads_list))
+  {
+    current_elem = list_pop_front (&sleeping_threads_list);
+    current_thread = list_entry (current_elem, struct sleeping_thread, elem);
+
+    if (current_thread->wake_time <= ticks)
+    {
+      sema_up(&current_thread->sema);
+    }
+    else
+    {
+      list_push_front (&sleeping_threads_list, current_elem);
+      break;
+    }
+  }
+
+  intr_set_level (old_level);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -209,6 +236,7 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
+  wake_sleeping_threads ();
   thread_tick ();
 }
 
