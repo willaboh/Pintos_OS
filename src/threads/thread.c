@@ -310,6 +310,7 @@ thread_exit (void)
   NOT_REACHED ();
 }
 
+/* Returns the highest priority of all ready threads */
 static int
 thread_get_max_priority (void)
 {
@@ -327,6 +328,7 @@ thread_get_max_priority (void)
     return return_val;
 }
 
+/* Yields the CPU to the thread with highest priority */
 void
 thread_max_yield (void)
 {
