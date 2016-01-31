@@ -70,6 +70,7 @@ static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
+static int thread_get_max_priority (void);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -209,10 +210,7 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
-  if (t->priority > thread_get_priority ())
-  {
-    thread_yield ();
-  }
+  thread_max_yield ();
 
   return tid;
 }
@@ -310,6 +308,39 @@ thread_exit (void)
   thread_current ()->status = THREAD_DYING;
   schedule ();
   NOT_REACHED ();
+}
+
+static int
+thread_get_max_priority (void)
+{
+    enum intr_level old_level = intr_disable ();
+    int return_val = -1;
+
+    if (list_begin (&ready_list) != list_end (&ready_list))
+      {
+        struct thread *t = list_entry (list_begin (&ready_list),
+                                       struct thread, elem);
+        return_val = t->priority;
+      }
+
+    intr_set_level (old_level);
+    return return_val;
+}
+
+void
+thread_max_yield (void)
+{
+  if (thread_get_max_priority () > thread_get_priority ())
+  {
+    if (intr_context ())
+    {
+      intr_yield_on_return ();
+    }
+    else
+    {
+      thread_yield ();
+    }
+  }
 }
 
 /* Yields the CPU.  The current thread is not put to sleep and
