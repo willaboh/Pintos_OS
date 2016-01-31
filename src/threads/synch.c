@@ -269,9 +269,22 @@ lock_held_by_current_thread (const struct lock *lock)
 /* One semaphore in a list. */
 struct semaphore_elem 
   {
+    int priority;                       /* priority of this waiting thread */
     struct list_elem elem;              /* List element. */
     struct semaphore semaphore;         /* This semaphore. */
   };
+
+bool sema_compare_priority (const struct list_elem *a,
+                            const struct list_elem *b,
+                            void *aux UNUSED)
+{
+  struct semaphore_elem *a_sema;
+  struct semaphore_elem *b_sema;
+  a_sema = list_entry (a, struct semaphore_elem, elem);
+  b_sema = list_entry (b, struct semaphore_elem, elem);
+
+  return a_sema->priority > b_sema->priority;
+}
 
 /* Initializes condition variable COND.  A condition variable
    allows one piece of code to signal a condition and cooperating
@@ -315,6 +328,7 @@ cond_wait (struct condition *cond, struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
   
   sema_init (&waiter.semaphore, 0);
+  waiter.priority =
   list_push_back (&cond->waiters, &waiter.elem);
   lock_release (lock);
   sema_down (&waiter.semaphore);
