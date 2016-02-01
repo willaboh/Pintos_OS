@@ -71,8 +71,8 @@ static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 static int thread_get_max_priority (void);
-static void thread_reinsert_ready_list (struct thread);
-static int thread_get_donated_priority (struct thread);
+static void thread_reinsert_ready_list (struct thread *);
+static int thread_get_donated_priority (struct thread *);
 static bool thread_compare_donation (const struct list_elem *a,
                                      const struct list_elem *b,
                                      void *aux UNUSED);
@@ -397,9 +397,9 @@ thread_get_donated_priority (struct thread *t)
   enum intr_level old_level = intr_disable ();
 
   int donated_priority = -1;
-  if (!list_empty (t->donations))
+  if (!list_empty (&t->donations))
   {
-    struct thread *doner = list_entry (list_front (t->donations),
+    struct thread *doner = list_entry (list_front (&t->donations),
                                        struct thread, elem);
     donated_priority = doner->priority;
   }
@@ -474,7 +474,7 @@ thread_donate_priority (struct thread *t)
 {
   while (true)
   {
-    ASSERT (intr_get_level == INTR_OFF);
+    ASSERT (intr_get_level () == INTR_OFF);
     ASSERT (is_thread (t));
 
     thread_reset_priority (t);
