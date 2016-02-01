@@ -202,9 +202,22 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
+  ASSERT (thread_current ()->required_lock == NULL);
+
+  enum intr_level old_level;
+  old_level = intr_disable ();
+
+  if (!thread_mlfqs && lock->holder != NULL)
+  {
+    thread_current ()->required_lock = lock;
+    thread_donate_priority (thread_current ());
+  }
 
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
+  thread_current ()->required_lock = NULL;
+
+  intr_set_level (old_level);
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -238,8 +251,29 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
+  enum intr_level old_level;
+  old_level = intr_disable ();
+
+  /* If we're using the priority scheduler, loop through all threads
+     that were waiting on this lock and notify them to remove their
+     priority donations. */
+  if (!thread_mlfqs)
+    {
+      struct list_elem *e;
+      for (e = list_begin (&lock->semaphore.waiters);
+           e != list_end (&lock->semaphore.waiters);
+           e = list_next (e))
+       {
+         struct thread *t = list_entry (e, struct thread, elem);
+         thread_remove_donation (t);
+       }
+
+      thread_reset_priority (thread_current ());
+    }
+
   lock->holder = NULL;
   sema_up (&lock->semaphore);
+  intr_set_level (old_level);
 }
 
 /* Returns true if the current thread holds LOCK, false
