@@ -207,10 +207,10 @@ lock_acquire (struct lock *lock)
   enum intr_level old_level;
   old_level = intr_disable ();
 
-  if (!thread_mlfqs && lock->holder != NULL)
+  if (lock->holder != NULL)
   {
     thread_current ()->required_lock = lock;
-    thread_donate_priority (thread_current ());
+    thread_donate_priority (thread_current());
   }
 
   sema_down (&lock->semaphore);
