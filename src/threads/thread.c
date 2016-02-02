@@ -321,7 +321,7 @@ static int
 thread_get_max_priority (void)
 {
     enum intr_level old_level = intr_disable ();
-    int return_val = -1;
+    int return_val = PRI_MIN - 1;
 
     if (!list_empty (&ready_list))
       {
@@ -396,11 +396,11 @@ thread_get_donated_priority (struct thread *t)
   ASSERT (is_thread (t));
   enum intr_level old_level = intr_disable ();
 
-  int donated_priority = -1;
+  int donated_priority = PRI_MIN - 1;
   if (!list_empty (&t->donations))
   {
     struct thread *doner = list_entry (list_front (&t->donations),
-                                       struct thread, elem);
+                                       struct thread, dona_elem);
     donated_priority = doner->priority;
   }
 
@@ -536,9 +536,10 @@ thread_get_priority (void)
   return thread_current ()->priority;
 }
 
-bool thread_compare_priority (const struct list_elem *a,
-                              const struct list_elem *b,
-                              void *aux UNUSED)
+bool
+thread_compare_priority (const struct list_elem *a,
+                         const struct list_elem *b,
+                         void *aux UNUSED)
 {
   struct thread *a_thread;
   struct thread *b_thread;

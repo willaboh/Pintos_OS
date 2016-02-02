@@ -254,22 +254,20 @@ lock_release (struct lock *lock)
   enum intr_level old_level;
   old_level = intr_disable ();
 
-  /* If we're using the priority scheduler, loop through all threads
-     that were waiting on this lock and notify them to remove their
-     priority donations. */
-  if (!thread_mlfqs)
-    {
-      struct list_elem *e;
-      for (e = list_begin (&lock->semaphore.waiters);
-           e != list_end (&lock->semaphore.waiters);
-           e = list_next (e))
-       {
-         struct thread *t = list_entry (e, struct thread, elem);
-         thread_remove_donation (t);
-       }
+  // Loop through threads waiting for this lock and remove from donations
+  if (!list_empty (&lock->semaphore.waiters))
+  {
+    struct list_elem *e;
+    for (e = list_begin (&lock->semaphore.waiters);
+         e != list_end (&lock->semaphore.waiters);
+         e = list_next (e))
+     {
+       struct thread *t = list_entry (e, struct thread, elem);
+       thread_remove_donation (t);
+     }
 
-      thread_reset_priority (thread_current ());
-    }
+    thread_reset_priority (thread_current ());
+  }
 
   lock->holder = NULL;
   sema_up (&lock->semaphore);

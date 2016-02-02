@@ -140,9 +140,9 @@ void thread_foreach (thread_action_func *, void *);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
-void thread_reset_priority (struct thread *);
-void thread_donate_priority (struct thread *);
-void thread_remove_donation (struct thread *);
+void thread_reset_priority (struct thread *t);
+void thread_donate_priority (struct thread *t);
+void thread_remove_donation (struct thread *t);
 bool thread_compare_priority (const struct list_elem *a,
                               const struct list_elem *b,
                               void *aux UNUSED);
