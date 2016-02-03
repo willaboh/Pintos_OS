@@ -293,7 +293,7 @@ struct semaphore_elem
     struct semaphore semaphore;         /* This semaphore. */
   };
 
-bool
+static bool
 sema_compare_priority (const struct list_elem *a,
                        const struct list_elem *b,
                        void *aux UNUSED)

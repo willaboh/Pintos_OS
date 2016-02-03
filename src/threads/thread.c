@@ -418,15 +418,15 @@ thread_reinsert_ready_list (struct thread *t)
          non-running threads */
       ASSERT (intr_get_level () == INTR_OFF);
 
-      list_remove(&t->elem);
-      list_insert_ordered(&ready_list,
+      list_remove (&t->elem);
+      list_insert_ordered (&ready_list,
                           &t->elem,
                           thread_compare_priority,
                           NULL);
     }
 }
 
-/* Sets the current thread's priority to the highest of it's base and all
+/* Sets the thread's priority to the highest of it's base and all
   donations */
 void
 thread_reset_priority (struct thread *t)
