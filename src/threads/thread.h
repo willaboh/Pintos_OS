@@ -94,11 +94,16 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
+    /* Priority Donations */
     int base_priority;                  /* Priority before donations */
     struct list donations;              /* Sorted list of donated priorities */
     struct list_elem dona_elem;         /* Elem for donating priority */
     struct lock *required_lock;         /* Lock which thread is waiting to
                                            acquire */
+
+    /* BSD_scheduler */
+    int nice;
+    int recent_cpu;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
