@@ -37,6 +37,8 @@ static struct thread *initial_thread;
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
 
+int load_average;
+
 /* Stack frame for kernel_thread(). */
 struct kernel_thread_frame 
   {
