@@ -102,8 +102,9 @@ struct thread
                                            acquire */
 
     /* BSD_scheduler */
-    int nice;
-    int recent_cpu;
+    int nice;                           /* Niceness of a thread */
+    int32_t recent_cpu;                 /* Amount of recent cpu time a thread
+                                           has received */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
