@@ -454,9 +454,12 @@ void
 thread_set_priority (int new_priority) 
 {
   ASSERT (PRI_MIN <= new_priority && new_priority <= PRI_MAX);
-  thread_current ()->base_priority = new_priority;
-  thread_reset_priority (thread_current ());
-  thread_max_yield ();
+  if (!thread_mlfqs)
+  {
+    thread_current ()->base_priority = new_priority;
+    thread_reset_priority (thread_current ());
+    thread_max_yield ();
+  }
 }
 
 /* Priority comparison for threads in the priority_donation list. */

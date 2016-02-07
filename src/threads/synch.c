@@ -255,7 +255,7 @@ lock_release (struct lock *lock)
   old_level = intr_disable ();
 
   // Loop through threads waiting for this lock and remove from donations
-  if (!list_empty (&lock->semaphore.waiters))
+  if (!list_empty (&lock->semaphore.waiters) && !thread_mlfqs)
   {
     struct list_elem *e;
     for (e = list_begin (&lock->semaphore.waiters);
