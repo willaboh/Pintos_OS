@@ -323,8 +323,9 @@ thread_exit (void)
 static int
 thread_get_max_priority (void)
 {
-    enum intr_level old_level = intr_disable ();
     int return_val = PRI_MIN - 1;
+
+    enum intr_level old_level = intr_disable ();
 
     if (!list_empty (&ready_list))
       {
