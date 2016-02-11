@@ -79,6 +79,8 @@ static int thread_get_donated_priority (struct thread *);
 static bool thread_compare_donation (const struct list_elem *a,
                                      const struct list_elem *b,
                                      void *aux UNUSED);
+static void thread_calculate_recent_cpu ();
+static void thread_calculate_load_avg ();
 
 
 /* Initializes the threading system by transforming the code
@@ -571,12 +573,24 @@ thread_get_nice (void)
   return 0;
 }
 
+static void
+thread_calculate_load_avg ()
+{
+
+}
+
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
 {
   /* Not yet implemented. */
   return 0;
+}
+
+static void
+thread_calculate_recent_cpu ()
+{
+
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
