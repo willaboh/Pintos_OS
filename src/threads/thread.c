@@ -487,18 +487,19 @@ thread_compare_donation (const struct list_elem *a,
 void
 thread_donate_priority (struct thread *t)
 {
-  while (true)
-  {
     ASSERT (intr_get_level () == INTR_OFF);
     ASSERT (is_thread (t));
 
-    thread_reset_priority (t);
-
-    if (t->required_lock != NULL)
+    while (t->required_lock != NULL)
     {
+      thread_reset_priority (t);
+
       struct thread *holder = t->required_lock->holder;
       ASSERT (holder != t);
 
+      /* If the thread is not current and has a required lock, it may
+         have already donated so remove old donation to make way for
+         updated donation */
       if (thread_current () != t)
       {
         thread_remove_donation (t);
@@ -508,25 +509,16 @@ thread_donate_priority (struct thread *t)
       {
         ASSERT (is_thread (holder));
 
-        thread_reset_priority (holder);
         list_insert_ordered (&holder->donations,
                              &t->dona_elem,
                              thread_compare_donation,
                              NULL);
+
+        /* Iterate through chain of holders */
         t = holder;
       }
-      else
-      {
-        break;
-      }
-
-    }
-    else
-    {
-      break;
-    }
   }
-
+    thread_reset_priority (t);
 }
 
 /* Remove the priority donated to a thread holding a lock this thread
