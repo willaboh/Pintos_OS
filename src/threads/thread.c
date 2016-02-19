@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "devices/timer.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -38,7 +39,7 @@ static struct thread *initial_thread;
 static struct lock tid_lock;
 
 /* Average number of threads ready to run per minute */
-int32_t load_average;
+fixed_point load_avg;
 
 /* Stack frame for kernel_thread(). */
 struct kernel_thread_frame 
@@ -79,8 +80,11 @@ static int thread_get_donated_priority (struct thread *);
 static bool thread_compare_donation (const struct list_elem *a,
                                      const struct list_elem *b,
                                      void *aux UNUSED);
-static void thread_calculate_recent_cpu ();
-static void thread_calculate_load_avg ();
+static void thread_calculate_bsd_priority (struct thread *t, void *aux UNUSED);
+static void thread_recalculate_bsd_variables (void);
+static void thread_calculate_recent_cpu (struct thread *t, void *aux UNUSED);
+static void thread_calculate_load_avg (void);
+static int get_ready_threads_size (void);
 
 
 /* Initializes the threading system by transforming the code
@@ -104,6 +108,8 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+
+  load_avg = 0;
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -558,6 +564,25 @@ thread_compare_priority (const struct list_elem *a,
   return a_thread->priority > b_thread->priority;
 }
 
+static int
+get_ready_threads_size (void)
+{
+  /* Not yet implemented */
+  return 0;
+}
+
+static void
+thread_calculate_bsd_priority (struct thread *t, void *aux UNUSED)
+{
+
+}
+
+static void
+thread_recalculate_bsd_variables (void)
+{
+
+}
+
 /* Sets the current thread's nice value to NICE. */
 void
 thread_set_nice (int nice UNUSED) 
@@ -574,7 +599,7 @@ thread_get_nice (void)
 }
 
 static void
-thread_calculate_load_avg ()
+thread_calculate_load_avg (void)
 {
 
 }
@@ -588,7 +613,7 @@ thread_get_load_avg (void)
 }
 
 static void
-thread_calculate_recent_cpu ()
+thread_calculate_recent_cpu (struct thread *t, void *aux UNUSED)
 {
 
 }

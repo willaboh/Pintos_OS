@@ -108,7 +108,7 @@ struct thread
 
     /* BSD_scheduler */
     int nice;                           /* Niceness of a thread */
-    int32_t recent_cpu;                 /* Amount of recent cpu time a thread
+    fixed_point recent_cpu;             /* Amount of recent cpu time a thread
                                            has received */
 
 #ifdef USERPROG
