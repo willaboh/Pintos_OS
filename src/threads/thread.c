@@ -152,6 +152,11 @@ thread_tick (void)
   else
     kernel_ticks++;
 
+  if (thread_mlfqs)
+  {
+    thread_recalculate_bsd_variables ();
+  }
+
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
     intr_yield_on_return ();
@@ -556,66 +561,147 @@ thread_compare_priority (const struct list_elem *a,
   return a_thread->priority > b_thread->priority;
 }
 
+/* Returns number of ready threads plus the current one if not idle */
 static int
 get_ready_threads_size (void)
 {
-  /* Not yet implemented */
-  return 0;
+  ASSERT (thread_mlfqs);
+
+  int size = list_size (&ready_list);
+  if (thread_current () != idle_thread)
+  {
+    size++;
+  }
+  return size;
 }
 
+/* Calculates bsd_scheduler priority using the formula
+   priority = PRI_MAX - recent_cpu / 4 - 2 * nice
+   and ensures new_priority is valid */
 static void
 thread_calculate_bsd_priority (struct thread *t, void *aux UNUSED)
 {
+  ASSERT (thread_mlfqs);
+  ASSERT (is_thread (t));
 
+  fixed_point fp_priority_max = convert_to_fixed_point (PRI_MAX);
+  fixed_point temp_recent_cpu = div_fixed_by_int (t->recent_cpu, 4);
+  fixed_point temp_nice = convert_to_fixed_point (t->nice * 2);
+  fixed_point result = fixed_subtract_fixed (fp_priority_max, temp_recent_cpu);
+  result = fixed_subtract_fixed (result, temp_nice);
+
+  int new_priority = convert_to_int_round_down (result);
+  if (new_priority < PRI_MIN)
+  {
+    new_priority = PRI_MIN;
+  }
+  else if (new_priority > PRI_MAX)
+  {
+    new_priority = PRI_MAX;
+  }
+  t->priority = new_priority;
 }
 
+/* Recalculates variables for bsd:
+   Thread priority is recalculated every 4 ticks.
+   Recent_cpu for running thread is incremented every tick
+   and recalculated for every thread once per second.  */
 static void
 thread_recalculate_bsd_variables (void)
 {
+  ASSERT (thread_mlfqs);
+  struct thread *t = thread_current ();
 
+  if (t != idle_thread)
+  {
+    ASSERT (t->status == THREAD_RUNNING);
+    t->recent_cpu = add_fixed_to_int (t->recent_cpu, 1);
+  }
+
+  if (timer_ticks () % TIMER_FREQ == 0)
+  {
+    thread_calculate_load_avg ();
+    thread_foreach (thread_calculate_recent_cpu, NULL);
+  }
 }
 
 /* Sets the current thread's nice value to NICE. */
 void
 thread_set_nice (int nice UNUSED) 
 {
-  /* Not yet implemented. */
+  ASSERT (thread_mlfqs);
+  ASSERT (nice >= NICE_MIN && nice <= NICE_MAX);
+
+  struct thread *t = thread_current ();
+  t->nice = nice;
+  thread_calculate_bsd_priority (t, NULL);
+  thread_reinsert_ready_list (t);
+  thread_max_yield ();
 }
 
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  ASSERT (thread_mlfqs);
+
+  return thread_current ()->nice;
 }
 
+/* Performs
+  load_avg = (59 / 60) * load_avg + (1 / 60) * ready_lists
+*/
 static void
 thread_calculate_load_avg (void)
 {
+  ASSERT (thread_mlfqs);
 
+  fixed_point fp_59 = convert_to_fixed_point (59);
+  fixed_point fp_1 = convert_to_fixed_point (1);
+  fixed_point temp_load_avg = div_fixed_by_int (fp_59, 60);
+  fixed_point temp_ready_coeff = div_fixed_by_int (fp_1, 60);
+  temp_load_avg = multiply_fixed_by_fixed (temp_load_avg, load_avg);
+  temp_ready_coeff =  multiply_fixed_by_int (temp_ready_coeff,
+                                             get_ready_threads_size ());
+  load_avg = add_fixed_to_fixed (temp_load_avg, temp_ready_coeff);
 }
 
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  ASSERT (thread_mlfqs);
+
+  fixed_point temp_load_avg = multiply_fixed_by_int (load_avg, 100);
+  return convert_to_int_round_nearest (temp_load_avg);
 }
 
+/*Calculates bsd_scheduler priority using the formula
+  recent_cpu = (2 * load_avg) / (2 * load_avg + 1) * recent_cpu + nice
+*/
 static void
 thread_calculate_recent_cpu (struct thread *t, void *aux UNUSED)
 {
+  ASSERT (thread_mlfqs);
 
+  fixed_point recent_cpu = t->recent_cpu;
+  fixed_point temp_load_avg = multiply_fixed_by_int (load_avg, 2);
+  fixed_point temp_sum = add_fixed_to_int (temp_load_avg, 1);
+  fixed_point coefficient = div_fixed_by_fixed (temp_load_avg, temp_sum);
+  recent_cpu = multiply_fixed_by_fixed (coefficient, recent_cpu);
+  recent_cpu = add_fixed_to_int (recent_cpu, t->nice);
+  t->recent_cpu = recent_cpu;
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  ASSERT (thread_mlfqs);
+
+  fixed_point temp_recent_cpu = thread_current ()->recent_cpu;
+  temp_recent_cpu = multiply_fixed_by_int (temp_recent_cpu, 100);
+  return convert_to_int_round_nearest (temp_recent_cpu);
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
@@ -805,6 +891,12 @@ schedule (void)
   ASSERT (intr_get_level () == INTR_OFF);
   ASSERT (cur->status != THREAD_RUNNING);
   ASSERT (is_thread (next));
+
+  if (thread_mlfqs)
+  {
+    thread_foreach (thread_calculate_bsd_priority, NULL);
+    list_sort (&ready_list, thread_compare_priority, NULL);
+  }
 
   if (cur != next)
     prev = switch_threads (cur, next);
